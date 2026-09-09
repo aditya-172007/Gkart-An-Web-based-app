@@ -1654,7 +1654,7 @@ document.querySelectorAll('.choice').forEach(choice => choice.addEventListener('
 
 const closeAccountModal = () => accountModal.classList.remove('open');
 
-const enterHome = showCustomerVideo => {
+const enterHome = (showCustomerVideo = selectedRole === 'customer') => {
 	closeAccountModal();
 	showHomeView(selectedRole === 'vendor', showCustomerVideo);
 	window.scrollTo(0, 0);
@@ -1712,7 +1712,7 @@ document.addEventListener('keydown', event => { if (event.key === 'Escape') clos
 				formMessage.textContent = isLogin ? 'You are signed in.' : 'Account details received. Your space is being prepared.';
 				formMessage.classList.add('show');
 				submitButton.textContent = isLogin ? 'Signed in' : 'Account created';
-				setTimeout(() => enterHome(), 350);
+				setTimeout(() => enterHome(account.role === 'customer'), 350);
 			} catch (error) {
 				formMessage.textContent = error.message;
 				formMessage.classList.add('show');
