@@ -147,7 +147,14 @@
 					<a href="#salesDashboard">Dashboard</a>
 					<a href="#vendorOrders">Orders <span class="vendor-order-badge" id="vendorOrderBadge" hidden>0</span></a>
 					<a href="#reviews">Reviews</a>
-					<a href="#profile">Profile</a>
+					<div class="static-nav-more">
+						<button class="static-nav-more-toggle" id="vendorMoreToggle" type="button" aria-expanded="false" aria-controls="vendorMoreMenu">More <span aria-hidden="true">⌄</span></button>
+						<div class="static-nav-more-menu" id="vendorMoreMenu">
+							<a href="#salesAnalysisPage">Sales analysis</a>
+							<a href="#vendorHelp">Help tool</a>
+							<a href="#profile">Profile</a>
+						</div>
+					</div>
 				</div>
 				<div class="vendor-account-menu">
 					<button class="static-nav-logo logo" id="vendorAccountToggle" type="button" aria-expanded="false" aria-controls="vendorAccountOptions">gKart<i>.</i></button>
@@ -171,6 +178,33 @@
 			<section class="sales-dashboard" id="salesDashboard" aria-labelledby="salesDashboardTitle">
 				<div class="sales-dashboard-title"><div><div class="mono board-kicker">Vendor analytics</div><h2 id="salesDashboardTitle">Your dashboard</h2></div></div>
 				<div class="kpi-grid"><article><span class="mono">Completed sales</span><strong id="dashboardSales">0</strong><small id="dashboardSalesNote">Paid or delivered orders</small></article><article><span class="mono">Revenue</span><strong id="dashboardRevenue">Rs 0</strong><small id="dashboardRevenueNote">From completed sales</small></article><article><span class="mono">Products listed</span><strong id="dashboardProducts">0</strong><small id="dashboardProductsNote">Items on your shelves</small></article><article><span class="mono">Pending orders</span><strong id="dashboardPending">0</strong><small id="dashboardPendingNote" class="negative">Needs attention</small></article></div>
+			</section>
+			<section class="sales-analysis-view" id="salesAnalysisPage" aria-labelledby="salesAnalysisTitle">
+				<div class="reviews-heading"><div><div class="mono board-kicker">Vendor analytics</div><h2 id="salesAnalysisTitle">Sales analysis</h2><p>Track completed sales by month and product.</p></div></div>
+				<div class="sales-analysis-tabs" role="tablist" aria-label="Sales analysis views"><button id="salesAnalysisTab" type="button" role="tab" aria-selected="true" aria-controls="salesAnalysisPanel">Sales analysis</button><button id="salesInsightsTab" type="button" role="tab" aria-selected="false" aria-controls="salesInsightsPanel">AI insights</button></div>
+				<div class="sales-analysis-panel" id="salesAnalysisPanel" role="tabpanel" aria-labelledby="salesAnalysisTab">
+					<div class="kpi-grid sales-analysis-kpis"><article><span class="mono">Gross revenue</span><strong id="salesAnalysisRevenue">Rs 0</strong><small>Completed orders</small></article><article><span class="mono">Completed sales</span><strong id="salesAnalysisOrders">0</strong><small>Paid or delivered</small></article><article><span class="mono">Average sale</span><strong id="salesAnalysisAverage">Rs 0</strong><small>Revenue per completed order</small></article></div>
+					<section class="sales-analysis-chart" aria-labelledby="salesAnalysisChartTitle"><div class="sales-analysis-chart-heading"><h3 id="salesAnalysisChartTitle">Revenue over the last six months</h3><div class="sales-analysis-controls"><div class="sales-analysis-segmented" role="group" aria-label="Chart period"><button type="button" data-analysis-period="30d" aria-pressed="false">30 days</button><button class="active" type="button" data-analysis-period="6m" aria-pressed="true">6 months</button><button type="button" data-analysis-period="12m" aria-pressed="false">12 months</button></div><div class="sales-analysis-segmented" role="group" aria-label="Chart measure"><button class="active" type="button" data-analysis-metric="revenue" aria-pressed="true">Revenue</button><button type="button" data-analysis-metric="orders" aria-pressed="false">Orders</button></div></div></div><div class="sales-analysis-chart-scroll"><div class="sales-analysis-bars" id="salesAnalysisBars" role="img" aria-label="Monthly completed order revenue"></div></div></section>
+					<section class="sales-analysis-products" aria-labelledby="salesAnalysisProductsTitle"><h3 id="salesAnalysisProductsTitle">Product performance</h3><div class="sales-analysis-table-wrap"><table><thead><tr><th scope="col">Product</th><th scope="col">Completed sales</th><th scope="col">Revenue</th></tr></thead><tbody id="salesAnalysisProductRows"><tr><td colspan="3">No completed sales yet.</td></tr></tbody></table></div></section>
+					<p class="shop-results-status sales-analysis-status" id="salesAnalysisStatus" role="status" hidden></p>
+				</div>
+				<div class="sales-insights-panel" id="salesInsightsPanel" role="tabpanel" aria-labelledby="salesInsightsTab" hidden>
+					<div class="sales-insights-heading"><div><div class="mono board-kicker">Store signals</div><h3>What is moving, and what to do next</h3><p>Insights use your recent orders and compare the latest 30 days with the previous 30.</p></div></div>
+					<section class="sales-insights-section" aria-labelledby="trendingProductsTitle"><h4 id="trendingProductsTitle">Trending products</h4><ol class="trending-products-list" id="trendingProductsList"><li>No completed sales yet.</li></ol></section>
+					<section class="sales-insights-section" aria-labelledby="salesTipsTitle"><h4 id="salesTipsTitle">Ways to improve sales</h4><ul class="sales-tips-list" id="salesTipsList"></ul></section>
+					<p class="sales-insights-note" id="salesInsightsNote">These data-backed suggestions are generated from your order history.</p>
+				</div>
+			</section>
+			<section class="vendor-help-view" id="vendorHelp" aria-labelledby="vendorHelpTitle">
+				<div class="reviews-heading"><div><div class="mono board-kicker">Vendor workshop</div><h2 id="vendorHelpTitle">Make it. Price it. Sell it.</h2><p>Search practical making guides, indicative price ranges, and ways to present your work.</p></div></div>
+				<form class="vendor-help-search" id="vendorHelpSearchForm">
+					<label class="mono" for="vendorHelpSearch">Product or craft</label>
+					<div><input id="vendorHelpSearch" type="search" placeholder="Try cookies or handmade pots" autocomplete="off" required><button class="submit-form mono" type="submit">Search guides <span aria-hidden="true">&#8599;</span></button></div>
+				</form>
+				<div class="vendor-help-topics" aria-label="Popular guides"><span class="mono">Popular</span><button type="button" data-help-query="cookies">Cookies</button><button type="button" data-help-query="handmade pots">Handmade pots</button><button type="button" data-help-query="scented candles">Scented candles</button></div>
+				<p class="shop-results-status vendor-help-status" id="vendorHelpStatus" role="status">Choose a guide or search for a product to get started.</p>
+				<div class="vendor-help-results" id="vendorHelpResults" aria-live="polite"></div>
+				<p class="vendor-help-pricing-note">Price ranges are indicative retail estimates, not live local market quotes. Check nearby sellers and calculate your own material, labor, and packaging costs before setting a price.</p>
 			</section>
 			<section class="reviews-view" id="reviews" aria-labelledby="reviewsTitle">
 				<div class="reviews-heading"><div><div class="mono board-kicker">Customer voices</div><h2 id="reviewsTitle">Reviews</h2><p>See what customers think about the things you share.</p></div></div>

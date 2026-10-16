@@ -34,6 +34,7 @@ const customerLogout = document.getElementById('customerLogout');
 const customerAccountToggle = document.getElementById('customerAccountToggle');
 const customerAccountOptions = document.getElementById('customerAccountOptions');
 const vendorLogout = document.getElementById('vendorLogout');
+const vendorReport = document.getElementById('vendorReport');
 const vendorAccountToggle = document.getElementById('vendorAccountToggle');
 const vendorAccountOptions = document.getElementById('vendorAccountOptions');
 const availableShops = document.getElementById('availableShops');
@@ -234,6 +235,24 @@ submitReview?.addEventListener('click', async () => {
 });
 const productBoard = document.querySelector('.product-board');
 const salesDashboard = document.getElementById('salesDashboard');
+const salesAnalysisView = document.getElementById('salesAnalysisPage');
+const salesAnalysisTab = document.getElementById('salesAnalysisTab');
+const salesInsightsTab = document.getElementById('salesInsightsTab');
+const salesAnalysisPanel = document.getElementById('salesAnalysisPanel');
+const salesInsightsPanel = document.getElementById('salesInsightsPanel');
+const salesAnalysisRevenue = document.getElementById('salesAnalysisRevenue');
+const salesAnalysisOrders = document.getElementById('salesAnalysisOrders');
+const salesAnalysisAverage = document.getElementById('salesAnalysisAverage');
+const salesAnalysisBars = document.getElementById('salesAnalysisBars');
+const salesAnalysisProductRows = document.getElementById('salesAnalysisProductRows');
+const salesAnalysisStatus = document.getElementById('salesAnalysisStatus');
+const vendorHelpView = document.getElementById('vendorHelp');
+const vendorHelpSearchForm = document.getElementById('vendorHelpSearchForm');
+const vendorHelpSearch = document.getElementById('vendorHelpSearch');
+const vendorHelpStatus = document.getElementById('vendorHelpStatus');
+const vendorHelpResults = document.getElementById('vendorHelpResults');
+const trendingProductsList = document.getElementById('trendingProductsList');
+const salesTipsList = document.getElementById('salesTipsList');
 const profileView = document.getElementById('profile');
 const profileEditModal = document.getElementById('profileEditModal');
 const profileEditForm = document.getElementById('profileEditForm');
@@ -256,6 +275,8 @@ const profileQrAction = document.getElementById('profileQrAction');
 const homeLink = document.querySelector('.static-nav-links a[href="#guestView"]');
 const dashboardLink = document.querySelector('.static-nav-links a[href="#salesDashboard"]');
 const profileLink = document.querySelector('.static-nav-links a[href="#profile"]');
+const vendorMoreToggle = document.getElementById('vendorMoreToggle');
+const vendorMoreMenu = document.getElementById('vendorMoreMenu');
 const reviewsView = document.getElementById('reviews');
 const vendorOrdersView = document.getElementById('vendorOrders');
 const vendorOrdersList = document.getElementById('vendorOrdersList');
@@ -293,6 +314,9 @@ let profileData = JSON.parse(localStorage.getItem('gkart-profile') || 'null') ||
 let selectedSlot = 0;
 let itemImage = '';
 let selectedRole = 'customer';
+let salesAnalysisOrdersData = [];
+let salesAnalysisPeriod = '6m';
+let salesAnalysisMetric = 'revenue';
 
 window.scrollTo(0, 0);
 
@@ -460,6 +484,242 @@ const loadVendorDashboard = async accountId => {
 	}
 };
 
+const salesDateKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+const salesMonthKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+const renderSalesAnalysisChart = () => {
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	let buckets;
+	if (salesAnalysisPeriod === '30d') {
+		const start = new Date(today);
+		start.setDate(start.getDate() - 29);
+		buckets = Array.from({ length: 30 }, (_, index) => {
+			const date = new Date(start);
+			date.setDate(start.getDate() + index);
+			return { key: salesDateKey(date), label: index % 5 === 0 || index === 29 ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : String(date.getDate()), revenue: 0, count: 0 };
+		});
+	} else {
+		const monthCount = salesAnalysisPeriod === '12m' ? 12 : 6;
+		buckets = Array.from({ length: monthCount }, (_, index) => {
+			const date = new Date(today.getFullYear(), today.getMonth() - (monthCount - index - 1), 1);
+			return { key: salesMonthKey(date), label: date.toLocaleDateString(undefined, { month: 'short' }), revenue: 0, count: 0 };
+		});
+	}
+	const bucketMap = new Map(buckets.map(bucket => [bucket.key, bucket]));
+	salesAnalysisOrdersData.filter(order => ['paid', 'delivered'].includes(order.status)).forEach(order => {
+		const date = new Date(order.createdAt);
+		if (Number.isNaN(date.getTime())) return;
+		const bucket = bucketMap.get(salesAnalysisPeriod === '30d' ? salesDateKey(date) : salesMonthKey(date));
+		if (!bucket) return;
+		bucket.revenue += Number(order.amount || 0);
+		bucket.count += 1;
+	});
+	const values = buckets.map(bucket => salesAnalysisMetric === 'revenue' ? bucket.revenue : bucket.count);
+	const maximum = Math.max(...values, 1);
+	const periodLabel = salesAnalysisPeriod === '30d' ? 'the last 30 days' : `the last ${salesAnalysisPeriod === '12m' ? '12' : 'six'} months`;
+	const metricLabel = salesAnalysisMetric === 'revenue' ? 'Revenue' : 'Completed orders';
+	document.getElementById('salesAnalysisChartTitle').textContent = `${metricLabel} over ${periodLabel}`;
+	salesAnalysisBars.setAttribute('aria-label', `${metricLabel} over ${periodLabel}`);
+	salesAnalysisBars.style.gridTemplateColumns = `repeat(${buckets.length}, minmax(0, 1fr))`;
+	salesAnalysisBars.style.minWidth = salesAnalysisPeriod === '30d' ? '900px' : salesAnalysisPeriod === '12m' ? '720px' : '360px';
+	salesAnalysisBars.innerHTML = buckets.map((bucket, index) => {
+		const value = values[index];
+		const height = value ? Math.max(4, value / maximum * 100) : 0;
+		const valueLabel = salesAnalysisMetric === 'revenue' ? `Rs ${value.toFixed(2)}` : `${value} ${value === 1 ? 'order' : 'orders'}`;
+		const visibleLabel = salesAnalysisPeriod !== '30d' || index % 5 === 0;
+		return `<div class="sales-analysis-month" title="${escapeHtml(bucket.label)}: ${valueLabel}"><span>${visibleLabel ? salesAnalysisMetric === 'revenue' ? `Rs ${value.toFixed(0)}` : value : ''}</span><div><i style="height:${height}%"></i></div><small>${escapeHtml(bucket.label)}</small></div>`;
+	}).join('');
+};
+
+const renderSalesInsights = () => {
+	const completedOrders = salesAnalysisOrdersData.filter(order => ['paid', 'delivered'].includes(order.status));
+	const today = new Date();
+	const recentStart = new Date(today);
+	recentStart.setHours(0, 0, 0, 0);
+	recentStart.setDate(recentStart.getDate() - 29);
+	const previousStart = new Date(recentStart);
+	previousStart.setDate(previousStart.getDate() - 30);
+	const recentOrders = completedOrders.filter(order => {
+		const date = new Date(order.createdAt);
+		return !Number.isNaN(date.getTime()) && date >= recentStart;
+	});
+	const previousOrders = completedOrders.filter(order => {
+		const date = new Date(order.createdAt);
+		return !Number.isNaN(date.getTime()) && date >= previousStart && date < recentStart;
+	});
+	const summarizeProducts = orders => {
+		const products = new Map();
+		orders.forEach(order => {
+			const name = order.productName || 'Untitled product';
+			const product = products.get(name) || { count: 0, revenue: 0 };
+			product.count += 1;
+			product.revenue += Number(order.amount || 0);
+			products.set(name, product);
+		});
+		return products;
+	};
+	const recentProducts = summarizeProducts(recentOrders);
+	const previousProducts = summarizeProducts(previousOrders);
+	const trending = [...recentProducts.entries()].sort((first, second) => second[1].count - first[1].count || second[1].revenue - first[1].revenue);
+	trendingProductsList.innerHTML = trending.length ? trending.slice(0, 3).map(([name, product]) => {
+		const previousCount = previousProducts.get(name)?.count || 0;
+		const change = previousCount ? `${Math.round((product.count - previousCount) / previousCount * 100)}% vs prior 30d` : 'New this period';
+		const trendClass = previousCount ? product.count >= previousCount ? 'up' : 'down' : 'new';
+		return `<li><div><strong>${escapeHtml(name)}</strong><small>${product.count} sold · Rs ${product.revenue.toFixed(2)}</small></div><span class="sales-trend ${trendClass}">${change}</span></li>`;
+	}).join('') : '<li class="sales-insights-empty">No completed sales in the last 30 days.</li>';
+	const pendingCount = salesAnalysisOrdersData.filter(order => order.status === 'pending').length;
+	const recentRevenue = recentOrders.reduce((total, order) => total + Number(order.amount || 0), 0);
+	const previousRevenue = previousOrders.reduce((total, order) => total + Number(order.amount || 0), 0);
+	const tips = [];
+	if (!completedOrders.length) {
+		tips.push('Add clear product photos and specific descriptions to give first-time shoppers more confidence.');
+		tips.push('Share your storefront with existing customers and invite them to browse your full product range.');
+	} else if (!recentOrders.length) {
+		tips.push('There have been no completed sales in the last 30 days. Feature one popular item and share it with returning customers.');
+	} else {
+		const topProduct = trending[0];
+		if (topProduct) tips.push(`Feature ${escapeHtml(topProduct[0])}, currently your most-ordered item, and consider pairing it with a related product.`);
+		if (previousRevenue > 0 && recentRevenue < previousRevenue) {
+			const decline = Math.round((previousRevenue - recentRevenue) / previousRevenue * 100);
+			tips.push(`Revenue is down ${decline}% against the previous 30 days. Review stock, pricing, and product visibility.`);
+		} else if (recentRevenue > previousRevenue && previousRevenue > 0) {
+			tips.push('Revenue is rising against the previous 30 days. Keep your best-selling items available and ask recent buyers for reviews.');
+		}
+		if (pendingCount) tips.push(`You have ${pendingCount} pending ${pendingCount === 1 ? 'order' : 'orders'}. Confirm or update them promptly to keep customers informed.`);
+		if (tips.length < 2) tips.push('Test a small bundle or seasonal offer, then compare completed orders in the chart to see whether it helps.');
+	}
+	salesTipsList.innerHTML = tips.map(tip => `<li>${tip}</li>`).join('');
+};
+
+const vendorHelpGuides = [
+	{
+		title: 'Small-batch cookies',
+		category: 'Food and baking',
+		keywords: 'cookie cookies biscuit biscuits chocolate chip baking bakery',
+		price: 'Rs 250-450 per 250 g pack, or Rs 30-60 each',
+		yield: 'About 18-24 medium cookies',
+		materials: ['250 g flour', '150 g softened butter', '180 g sugar', '1 egg and 1 tsp vanilla', '1/2 tsp baking soda and a pinch of salt', '150 g chocolate chips or a chosen add-in'],
+		steps: ['Cream the butter and sugar until pale, then beat in the egg and vanilla.', 'Mix in the dry ingredients just until a dough forms; fold in the chocolate chips.', 'Chill the dough for 30 minutes, portion evenly, and leave space between each cookie.', 'Bake at 175 C for about 10-12 minutes, until the edges are set. Cool fully before packing.'],
+		tips: ['Weigh portions for consistent size and cost.', 'List common allergens such as wheat, milk, egg, nuts, and soy; follow local food-safety and labeling rules.', 'Use a sealed food-safe pouch and test how long the cookies stay fresh before printing a shelf-life date.'],
+	},
+	{
+		title: 'Handbuilt terracotta pots',
+		category: 'Pottery and home goods',
+		keywords: 'handmade handmade pot pots pottery clay planter planters terracotta ceramic handbuilt',
+		price: 'Small planters: Rs 250-700; medium: Rs 800-2,000; larger or detailed: Rs 2,000-5,000',
+		yield: 'One pot per form; drying and firing time varies by clay body and thickness',
+		materials: ['Pottery clay suitable for your kiln', 'Water, a sponge, and a wooden rib', 'Scoring tool and slip for joining', 'Wire cutter and a board for drying', 'Kiln-safe glaze if a finished surface is wanted'],
+		steps: ['Wedge the clay to remove air pockets, then choose a pinch, coil, or slab-building method.', 'Build an even wall and base; score and join seams with slip so they do not separate.', 'Add a drainage hole for a planter and smooth sharp edges.', 'Dry slowly and evenly until bone-dry, then fire according to the clay manufacturer’s temperature range.', 'Apply a compatible glaze if desired and complete the glaze firing; test the finished pot for leaks and stability.'],
+		tips: ['Keep wall thickness consistent to reduce cracking and firing failures.', 'Include kiln time, clay loss, sanding, and protective packaging in your price.', 'Use fired, weather-suitable clay for outdoor planters; decorative air-dry clay is not automatically waterproof.'],
+	},
+	{
+		title: 'Scented container candles',
+		category: 'Home fragrance',
+		keywords: 'candle candles scented soy wax fragrance wick home decor',
+		price: 'Rs 350-900 for a 150-200 g container candle',
+		yield: 'One 180 g candle per 180 g of wax, before small process losses',
+		materials: ['Soy or other container wax from a reputable supplier', 'A heat-safe container and correctly sized wick', 'Fragrance oil labeled for candle making', 'Thermometer, pouring jug, and a digital scale'],
+		steps: ['Clean and dry the container, then center and secure the wick.', 'Weigh the wax and melt it using the supplier’s recommended method and temperature.', 'Add fragrance only within the wax maker’s maximum fragrance-load guidance.', 'Pour at the supplier-recommended temperature, keep the wick centered, and let the candle cure as directed.', 'Trim the wick and complete a supervised burn test before selling the batch.'],
+		tips: ['Test each wax, wick, fragrance, and container combination; burn performance changes with the setup.', 'Add a clear burn-safety label and account for curing time and break-resistant packaging.', 'Do not leave a test candle burning unattended.'],
+	},
+];
+
+const renderVendorHelp = query => {
+	const ignoredTerms = new Set(['how', 'to', 'make', 'a', 'an', 'the', 'for', 'with', 'of', 'my']);
+	const terms = query.toLowerCase().split(/[^a-z0-9]+/).filter(term => term.length > 1 && !ignoredTerms.has(term));
+	if (!terms.length) {
+		vendorHelpStatus.textContent = 'Choose a popular guide or search for a product to get started.';
+		vendorHelpResults.innerHTML = '';
+		return;
+	}
+	const matches = vendorHelpGuides.map(guide => {
+		const searchableText = `${guide.title} ${guide.category} ${guide.keywords}`.toLowerCase();
+		return { guide, score: terms.reduce((score, term) => score + Number(searchableText.includes(term)), 0) };
+	}).filter(match => match.score).sort((first, second) => second.score - first.score);
+	if (!matches.length) {
+		vendorHelpStatus.textContent = `No guide found for “${query.trim()}”. Try cookies, handmade pots, or scented candles.`;
+		vendorHelpResults.innerHTML = '';
+		return;
+	}
+	vendorHelpStatus.textContent = `${matches.length} ${matches.length === 1 ? 'guide' : 'guides'} found.`;
+	vendorHelpResults.innerHTML = matches.map(({ guide }) => `<article class="vendor-help-guide"><header><div><span class="mono">${escapeHtml(guide.category)}</span><h3>${escapeHtml(guide.title)}</h3><p>${escapeHtml(guide.yield)}</p></div><div class="vendor-help-price"><span class="mono">Indicative selling range</span><strong>${escapeHtml(guide.price)}</strong></div></header><div class="vendor-help-guide-grid"><section><h4>Materials</h4><ul>${guide.materials.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section><section><h4>How to make it</h4><ol>${guide.steps.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol></section></div><section class="vendor-help-guide-tips"><h4>Quality and selling notes</h4><ul>${guide.tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}</ul></section></article>`).join('');
+};
+
+vendorHelpSearchForm.addEventListener('submit', event => {
+	event.preventDefault();
+	renderVendorHelp(vendorHelpSearch.value.trim());
+});
+document.querySelectorAll('[data-help-query]').forEach(button => button.addEventListener('click', () => {
+	vendorHelpSearch.value = button.dataset.helpQuery;
+	renderVendorHelp(vendorHelpSearch.value);
+}));
+
+const loadVendorSalesAnalysis = async accountId => {
+	if (!accountId || !salesAnalysisView) return;
+	salesAnalysisOrdersData = [];
+	salesAnalysisStatus.hidden = false;
+	salesAnalysisStatus.textContent = 'Loading sales analysis...';
+	try {
+		const response = await fetch(`/api/vendor/orders?accountId=${encodeURIComponent(accountId)}`);
+		const result = await readJsonResponse(response);
+		if (!response.ok) throw new Error(result.error || 'Unable to load sales analysis.');
+		salesAnalysisOrdersData = result.orders || [];
+		const completedOrders = salesAnalysisOrdersData.filter(order => ['paid', 'delivered'].includes(order.status));
+		const revenue = completedOrders.reduce((total, order) => total + Number(order.amount || 0), 0);
+		const productSales = new Map();
+		completedOrders.forEach(order => {
+			const name = order.productName || 'Untitled product';
+			const product = productSales.get(name) || { count: 0, revenue: 0 };
+			product.count += 1;
+			product.revenue += Number(order.amount || 0);
+			productSales.set(name, product);
+		});
+		salesAnalysisRevenue.textContent = `Rs ${revenue.toFixed(2)}`;
+		salesAnalysisOrders.textContent = completedOrders.length;
+		salesAnalysisAverage.textContent = `Rs ${completedOrders.length ? (revenue / completedOrders.length).toFixed(2) : '0.00'}`;
+		const productRows = [...productSales.entries()].sort((first, second) => second[1].revenue - first[1].revenue);
+		salesAnalysisProductRows.innerHTML = productRows.length ? productRows.map(([name, product]) => `<tr><th scope="row">${escapeHtml(name)}</th><td>${product.count}</td><td>Rs ${product.revenue.toFixed(2)}</td></tr>`).join('') : '<tr><td colspan="3">No completed sales yet.</td></tr>';
+		renderSalesAnalysisChart();
+		renderSalesInsights();
+		salesAnalysisStatus.hidden = completedOrders.length > 0;
+		salesAnalysisStatus.textContent = 'No completed sales yet.';
+	} catch (error) {
+		salesAnalysisStatus.hidden = false;
+		salesAnalysisStatus.textContent = error.message;
+	}
+};
+
+const activateSalesAnalysisTab = showInsights => {
+	salesAnalysisTab.setAttribute('aria-selected', String(!showInsights));
+	salesInsightsTab.setAttribute('aria-selected', String(showInsights));
+	salesAnalysisPanel.hidden = showInsights;
+	salesInsightsPanel.hidden = !showInsights;
+};
+salesAnalysisTab.addEventListener('click', () => activateSalesAnalysisTab(false));
+salesInsightsTab.addEventListener('click', () => {
+	activateSalesAnalysisTab(true);
+	renderSalesInsights();
+});
+document.querySelectorAll('[data-analysis-period]').forEach(button => button.addEventListener('click', () => {
+	salesAnalysisPeriod = button.dataset.analysisPeriod;
+	document.querySelectorAll('[data-analysis-period]').forEach(option => {
+		const isSelected = option === button;
+		option.classList.toggle('active', isSelected);
+		option.setAttribute('aria-pressed', String(isSelected));
+	});
+	renderSalesAnalysisChart();
+}));
+document.querySelectorAll('[data-analysis-metric]').forEach(button => button.addEventListener('click', () => {
+	salesAnalysisMetric = button.dataset.analysisMetric;
+	document.querySelectorAll('[data-analysis-metric]').forEach(option => {
+		const isSelected = option === button;
+		option.classList.toggle('active', isSelected);
+		option.setAttribute('aria-pressed', String(isSelected));
+	});
+	renderSalesAnalysisChart();
+}));
+
 const updateVendorOrder = async (orderId, status, accountId) => {
 	try {
 		const response = await fetch(`/api/vendor/orders/${encodeURIComponent(orderId)}?accountId=${encodeURIComponent(accountId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
@@ -602,14 +862,57 @@ document.addEventListener('keydown', event => {
 });
 renderItems();
 
-const clearNavActive = () => document.querySelectorAll('.static-nav-links a').forEach(navLink => navLink.classList.remove('active'));
+const clearNavActive = () => {
+	document.querySelectorAll('.static-nav-links a, .static-nav-more-toggle').forEach(navLink => navLink.classList.remove('active'));
+};
+const setNavActive = link => {
+	clearNavActive();
+	link.classList.add('active');
+	if (vendorMoreMenu.contains(link)) vendorMoreToggle.classList.add('active');
+};
+const closeVendorMoreMenu = () => {
+	vendorMoreMenu.classList.remove('open');
+	vendorMoreToggle.setAttribute('aria-expanded', 'false');
+};
+vendorMoreToggle.addEventListener('click', () => {
+	const isExpanded = vendorMoreToggle.getAttribute('aria-expanded') === 'true';
+	vendorMoreToggle.setAttribute('aria-expanded', String(!isExpanded));
+	vendorMoreMenu.classList.toggle('open', !isExpanded);
+});
+document.addEventListener('click', event => {
+	if (!vendorMoreMenu.parentElement.contains(event.target)) closeVendorMoreMenu();
+});
+document.addEventListener('keydown', event => {
+	if (event.key === 'Escape') closeVendorMoreMenu();
+});
 const hideContentViews = () => {
 	productBoard.classList.add('dashboard-hidden');
 	salesDashboard.classList.remove('dashboard-visible');
+	salesAnalysisView.classList.remove('sales-analysis-visible');
+	vendorHelpView.classList.remove('vendor-help-visible');
 	vendorOrdersView.classList.remove('vendor-orders-visible');
 	reviewsView.classList.remove('reviews-visible');
 	reportView.classList.remove('report-visible');
 	profileView.classList.remove('profile-visible');
+};
+
+const showVendorReport = () => {
+	hideContentViews();
+	reportView.classList.add('report-visible');
+	commentForm.classList.remove('visible');
+	commentForm.reset();
+	bugForm.classList.remove('visible');
+	bugForm.reset();
+	bugScreenshotName.textContent = 'Add a screenshot';
+	customerForm.classList.remove('visible');
+	customerForm.reset();
+	chatbotShell.appendChild(commentForm);
+	chatbotShell.appendChild(bugForm);
+	chatbotMessages.innerHTML = '';
+	chatbotChoices.classList.remove('visible');
+	usedQuestions.clear();
+	questionButtons.forEach(button => { button.hidden = false; });
+	showBotResponse('Hi sir, how can I help you?', () => chatbotChoices.classList.add('visible'));
 };
 
 dashboardLink.addEventListener('click', event => {
@@ -621,12 +924,14 @@ dashboardLink.addEventListener('click', event => {
 	pageTransition.classList.add('active');
 	productBoard.classList.add('dashboard-hidden');
 	salesDashboard.classList.add('dashboard-visible');
+	salesAnalysisView.classList.remove('sales-analysis-visible');
+	vendorHelpView.classList.remove('vendor-help-visible');
 	vendorOrdersView.classList.remove('vendor-orders-visible');
 	reviewsView.classList.remove('reviews-visible');
 	reportView.classList.remove('report-visible');
 	profileView.classList.remove('profile-visible');
-	clearNavActive();
-	dashboardLink.classList.add('active');
+	setNavActive(dashboardLink);
+	closeVendorMoreMenu();
 	loadVendorDashboard(profileData.id);
 	setTimeout(() => salesDashboard.scrollIntoView({ behavior: 'instant', block: 'start' }), 430);
 });
@@ -637,12 +942,14 @@ homeLink.addEventListener('click', event => {
 	playPageTransition();
 	productBoard.classList.remove('dashboard-hidden');
 	salesDashboard.classList.remove('dashboard-visible');
+	salesAnalysisView.classList.remove('sales-analysis-visible');
+	vendorHelpView.classList.remove('vendor-help-visible');
 	vendorOrdersView.classList.remove('vendor-orders-visible');
 	reviewsView.classList.remove('reviews-visible');
 	reportView.classList.remove('report-visible');
 	profileView.classList.remove('profile-visible');
-	clearNavActive();
-	homeLink.classList.add('active');
+	setNavActive(homeLink);
+	closeVendorMoreMenu();
 	document.getElementById('guestView').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
@@ -652,11 +959,22 @@ document.querySelectorAll('.static-nav-links a').forEach(link => {
 		event.preventDefault();
 		history.replaceState(null, '', link.getAttribute('href'));
 		playPageTransition();
-		clearNavActive();
-		link.classList.add('active');
+		setNavActive(link);
+		closeVendorMoreMenu();
 		if (link.getAttribute('href') === '#reviews') {
 			hideContentViews();
 			reviewsView.classList.add('reviews-visible');
+		}
+		if (link.getAttribute('href') === '#salesAnalysisPage') {
+			hideContentViews();
+			salesAnalysisView.classList.add('sales-analysis-visible');
+			loadVendorSalesAnalysis(profileData.id);
+		}
+		if (link.getAttribute('href') === '#vendorHelp') {
+			hideContentViews();
+			vendorHelpView.classList.add('vendor-help-visible');
+			vendorHelpSearch.value = '';
+			renderVendorHelp('');
 		}
 		if (link.getAttribute('href') === '#vendorOrders') {
 			hideContentViews();
@@ -664,22 +982,7 @@ document.querySelectorAll('.static-nav-links a').forEach(link => {
 			loadVendorOrders(profileData.id);
 		}
 		if (link.getAttribute('href') === '#report') {
-			hideContentViews();
-			reportView.classList.add('report-visible');
-			commentForm.classList.remove('visible');
-			commentForm.reset();
-			bugForm.classList.remove('visible');
-			bugForm.reset();
-			bugScreenshotName.textContent = 'Add a screenshot';
-			customerForm.classList.remove('visible');
-			customerForm.reset();
-			chatbotShell.appendChild(commentForm);
-			chatbotShell.appendChild(bugForm);
-			chatbotMessages.innerHTML = '';
-			chatbotChoices.classList.remove('visible');
-			usedQuestions.clear();
-			questionButtons.forEach(button => { button.hidden = false; });
-			showBotResponse('Hi sir, how can I help you?', () => chatbotChoices.classList.add('visible'));
+			showVendorReport();
 		}
 		if (link === profileLink) {
 			hideContentViews();
@@ -689,6 +992,17 @@ document.querySelectorAll('.static-nav-links a').forEach(link => {
 		const target = document.querySelector(link.getAttribute('href'));
 		if (target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 430);
 	});
+});
+
+vendorReport?.addEventListener('click', () => {
+	history.replaceState(null, '', '#report');
+	playPageTransition();
+	clearNavActive();
+	closeVendorMoreMenu();
+	vendorAccountOptions.classList.remove('open');
+	vendorAccountToggle.setAttribute('aria-expanded', 'false');
+	showVendorReport();
+	setTimeout(() => reportView.scrollIntoView({ behavior: 'smooth', block: 'start' }), 430);
 });
 
 document.getElementById('openProfileEdit').addEventListener('click', () => {
@@ -1746,6 +2060,10 @@ const restoreSessionView = () => {
 		const customerPage = hash.replace('#', '');
 		const customerPages = ['customerHome', 'customerStoresPage', 'customerPreferencePage', 'customerNearbyPage', 'customerOffersPage', 'customerCart', 'customerReport'];
 		showCustomerPage(customerPages.includes(customerPage) ? customerPage : 'customerHome');
+		return;
+	}
+	if (hash === '#report') {
+		vendorReport.click();
 		return;
 	}
 	const vendorLink = document.querySelector(`.static-nav-links a[href="${hash}"]`);
